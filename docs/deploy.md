@@ -1,5 +1,23 @@
 # Deploying cyex.tv
 
+## The short way
+
+On the host, as a user in the `docker` group:
+```bash
+git clone https://github.com/cyex-tv/infra /opt/cyextv/infra
+# Copy your filled env files to /opt/cyextv/etc-cyextv/ (db, api, events, worker, check .env)
+cd /opt/cyextv && sudo infra/scripts/install.sh /opt/cyextv/etc-cyextv
+```
+It clones the platform next to it, installs the env files to `/etc/cyextv`, runs
+`scripts/preflight.sh`, builds and starts everything, waits for it to answer, and installs the
+backup and check cron jobs. It's safe to run again for an update. Then add the tunnel
+hostnames (`docs/tunnel.md`), run `scripts/smoke.sh` from anywhere, and do
+`docs/first-sweep.md`.
+
+Delete `/opt/cyextv/etc-cyextv` once it ran: the installed copies are in `/etc/cyextv`.
+
+## By hand
+
 First time, on the host (as a user in the `docker` group):
 
 1. Check out both repos next to each other, for example in `/opt/cyextv`:
