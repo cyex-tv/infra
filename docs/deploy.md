@@ -1,16 +1,50 @@
 # Deploying cyex.tv
 
+## Layout on the host
+
+| Path | What |
+|---|---|
+| `/srv/cyex-tv/infra` | this repo, cloned |
+| `/srv/cyex-tv/infra/env` | the real env files (`db.env`, `api.env`, `events.env`, `worker.env`, `check.env`, optionally `backup.env` and `compose.env`). Gitignored (`env/*.env`), directory `750` and files `640`, `root:docker`. Never committed |
+| `/srv/cyex-tv/platform` | the cyex-tv/platform checkout the images build from |
+
+`CYEXTV_ENV_DIR` overrides the env location everywhere (compose, install, preflight, the cron
+scripts); the default is `/srv/cyex-tv/infra/env`. Compose reads each file as
+`${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/<name>.env`.
+
+## The short way
+
+On the host, as a user in the `docker` group:
+```bash
+sudo mkdir -p /srv/cyex-tv && sudo chown "$USER" /srv/cyex-tv
+git clone https://github.com/cyex-tv/infra /srv/cyex-tv/infra
+# Put your filled env files in /srv/cyex-tv/infra/env/ (from env/*.env.example; see env/README.md)
+sudo /srv/cyex-tv/infra/scripts/install.sh
+```
+Files made elsewhere can be copied in by passing their folder: `sudo scripts/install.sh <folder>`
+copies them into the env dir. The script clones or updates the platform next to this repo
+(`/srv/cyex-tv/platform`), sets the permissions, refuses to go on if an env file is tracked by git
+or readable by everyone, runs `scripts/preflight.sh`, builds and starts everything, waits for it to
+answer, and installs the backup and check cron jobs. It's safe to run again for an update. Then add
+the tunnel hostnames (`docs/tunnel.md`), run `scripts/smoke.sh` from anywhere, and do
+`docs/first-sweep.md`.
+
+The env files stay in `env/`; there is nothing to delete afterwards.
+
+## By hand
+
 First time, on the host (as a user in the `docker` group):
 
-1. Check out both repos next to each other, for example in `/opt/cyextv`:
+1. Check out both repos under `/srv/cyex-tv`:
    ```bash
-   git clone https://github.com/cyex-tv/platform /opt/cyextv/platform
-   git clone https://github.com/cyex-tv/infra /opt/cyextv/infra
+   git clone https://github.com/cyex-tv/platform /srv/cyex-tv/platform
+   git clone https://github.com/cyex-tv/infra /srv/cyex-tv/infra
    ```
-2. Put the env files in `/etc/cyextv/` (see `env/README.md`), `chmod 640`, owned by root, group `docker`.
+2. Put the env files in `/srv/cyex-tv/infra/env/` (see `env/README.md`): directory `750`, files
+   `640`, owned by root, group `docker`. `git -C /srv/cyex-tv/infra status` must not list them.
 3. Start it:
    ```bash
-   cd /opt/cyextv/infra
+   cd /srv/cyex-tv/infra
    docker compose -f compose/docker-compose.yaml up -d --build
    ```
    The api runs the database migrations on start.
@@ -27,8 +61,8 @@ First time, on the host (as a user in the `docker` group):
 ## Updating
 
 ```bash
-cd /opt/cyextv/platform && git pull
-cd /opt/cyextv/infra && git pull
+cd /srv/cyex-tv/platform && git pull
+cd /srv/cyex-tv/infra && git pull
 docker compose -f compose/docker-compose.yaml up -d --build
 ```
 

@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # The v1 alerts (PLAN.md Phase 9, docs/monitoring.md). Run every 5 minutes from cron, as a user
 # in the docker group:
-#   */5 * * * * /opt/cyextv/infra/monitoring/check.sh >> /var/log/cyextv-check.log 2>&1
+#   */5 * * * * /srv/cyex-tv/infra/monitoring/check.sh >> /var/log/cyextv-check.log 2>&1
 #
 # Each check is either ok or failing. A failing check alerts once when it starts and once when it
 # clears, not every run. Alerts go to CYEXTV_ALERT_WEBHOOK (a Discord or Slack-compatible
-# incoming webhook taking {"content": "..."}), read from /etc/cyextv/check.env if present.
+# incoming webhook taking {"content": "..."}), read from ${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/check.env if present.
 # Without a webhook the alerts are only logged.
 set -uo pipefail
 
-[ -r /etc/cyextv/check.env ] && . /etc/cyextv/check.env
+ENV_DIR="${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}"
+[ -r "$ENV_DIR/check.env" ] && . "$ENV_DIR/check.env"
 WEBHOOK="${CYEXTV_ALERT_WEBHOOK:-}"
 STATE="${CYEXTV_CHECK_STATE:-/var/lib/cyextv-check}"
 DUE_MAX="${CYEXTV_DUE_MAX:-100}"
