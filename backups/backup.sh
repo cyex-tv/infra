@@ -7,11 +7,27 @@
 # Off-host copy: an rclone remote named in CYEXTV_BACKUP_REMOTE (for example
 # `r2-backups:cyex-tv-backups`, a separate bucket with its own token, not the CDN bucket).
 # Without it the dump stays on the host only, and the script says so.
+#
+# Encryption: set CYEXTV_BACKUP_AGE_RECIPIENT to an `age` public key (age1...) and only the
+# encrypted `.dump.age` is uploaded. The private key stays off the host (see backups/restore-test.sh).
+# Without it the plain dump is uploaded as before, and the script warns loudly.
+#
+# Settings are read from the environment, and from ${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/backup.env if that file exists
+# (see env/backup.env.example); the file wins.
 set -euo pipefail
+
+ENV_FILE="${CYEXTV_BACKUP_ENV:-${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/backup.env}"
+if [ -r "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
+fi
 
 DIR="${CYEXTV_BACKUP_DIR:-/var/backups/cyextv}"
 KEEP_DAYS="${CYEXTV_BACKUP_KEEP_DAYS:-14}"
 REMOTE="${CYEXTV_BACKUP_REMOTE:-}"
+AGE_RECIPIENT="${CYEXTV_BACKUP_AGE_RECIPIENT:-}"
 STAMP="$(date -u +%Y-%m-%dT%H%M%SZ)"
 FILE="$DIR/cyextv-$STAMP.dump"
 
@@ -28,11 +44,23 @@ chmod 600 "$FILE"
 docker exec -i cyextv-db pg_restore --list < "$FILE" > /dev/null
 echo "$(date -u +%FT%TZ) dumped $(du -h "$FILE" | cut -f1) to $FILE"
 
+UPLOAD="$FILE"
+if [ -n "$AGE_RECIPIENT" ]; then
+    command -v age > /dev/null || { echo "$(date -u +%FT%TZ) ERROR: CYEXTV_BACKUP_AGE_RECIPIENT is set but age is not installed" >&2; exit 1; }
+    age -r "$AGE_RECIPIENT" -o "$FILE.age.partial" "$FILE"
+    mv "$FILE.age.partial" "$FILE.age"
+    chmod 600 "$FILE.age"
+    UPLOAD="$FILE.age"
+    echo "$(date -u +%FT%TZ) encrypted to $UPLOAD"
+else
+    echo "$(date -u +%FT%TZ) WARNING: CYEXTV_BACKUP_AGE_RECIPIENT not set; the dump is NOT encrypted before upload" >&2
+fi
+
 if [ -n "$REMOTE" ]; then
-    rclone copy --immutable "$FILE" "$REMOTE/"
-    echo "$(date -u +%FT%TZ) copied to $REMOTE"
+    rclone copy --immutable "$UPLOAD" "$REMOTE/"
+    echo "$(date -u +%FT%TZ) copied $(basename "$UPLOAD") to $REMOTE"
 else
     echo "$(date -u +%FT%TZ) WARNING: CYEXTV_BACKUP_REMOTE not set; the dump is on this host only" >&2
 fi
 
-find "$DIR" -name 'cyextv-*.dump' -mtime +"$KEEP_DAYS" -delete
+find "$DIR" \( -name 'cyextv-*.dump' -o -name 'cyextv-*.dump.age' \) -mtime +"$KEEP_DAYS" -delete

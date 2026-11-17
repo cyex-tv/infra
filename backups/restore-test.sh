@@ -4,6 +4,10 @@
 #
 #   backups/restore-test.sh /var/backups/cyextv/cyextv-<stamp>.dump
 #
+# An encrypted dump (`.dump.age`) needs the age private key file, kept off the production host:
+#
+#   CYEXTV_RESTORE_AGE_IDENTITY=/path/to/age-key.txt backups/restore-test.sh cyextv-<stamp>.dump.age
+#
 # Run it monthly and after any schema change; write the date and result in docs/restores.md.
 set -euo pipefail
 
@@ -20,7 +24,15 @@ for _ in $(seq 1 30); do
     sleep 1
 done
 
-docker exec -i "$NAME" pg_restore --no-owner -U postgres -d cyextv < "$DUMP"
+case "$DUMP" in
+    *.age)
+        IDENTITY="${CYEXTV_RESTORE_AGE_IDENTITY:?set CYEXTV_RESTORE_AGE_IDENTITY to the age private key file for an encrypted dump}"
+        age -d -i "$IDENTITY" "$DUMP" | docker exec -i "$NAME" pg_restore --no-owner -U postgres -d cyextv
+        ;;
+    *)
+        docker exec -i "$NAME" pg_restore --no-owner -U postgres -d cyextv < "$DUMP"
+        ;;
+esac
 
 # The restore counts when the core tables are there and the migrations table matches.
 q() { docker exec "$NAME" psql -U postgres -d cyextv -tAc "$1"; }
