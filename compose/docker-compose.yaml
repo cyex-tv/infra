@@ -93,11 +93,19 @@ services:
       resources:
         limits: { memory: 1g, cpus: "2.0" }
 
-  # The website (Phase 6) joins here once it exists:
-  # web:
-  #   <<: *small
-  #   build: { context: ${PLATFORM_DIR:-../../platform}/apps/web }
-  #   ports: ["127.0.0.1:8082:3000"]
+  # The website (Phase 6). It holds no secrets: the browser talks to api.cyex.tv itself.
+  web:
+    <<: *small
+    build:
+      context: ${PLATFORM_DIR:-../../platform}/apps/web
+    image: cyex-tv-web:local
+    environment:
+      ORIGIN: https://cyex.tv
+      PUBLIC_API_URL: https://api.cyex.tv
+    ports: ["127.0.0.1:8082:3000"]
+    deploy:
+      resources:
+        limits: { memory: 256m, cpus: "0.5" }
 
 networks:
   cyextv:

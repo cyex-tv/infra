@@ -39,6 +39,7 @@ A check alerts after failing twice in a row (about 10 minutes), and again when i
 |---|---|
 | `api` | `/health/ready` doesn't answer (the api or `tv-db` is down) |
 | `events` | `/health` on events doesn't answer |
+| `web` | the website doesn't answer on `/developers` |
 | `worker` | the worker isn't running, or its metrics don't answer |
 | `worker-db` | the worker can't reach `tv-db` |
 | `queue` | more than 100 jobs are due (the worker is stuck or too slow) |

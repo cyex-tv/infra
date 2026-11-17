@@ -48,7 +48,7 @@ container() {
         --filter "label=com.docker.compose.service=$1" | head -n 1
 }
 
-# 1. The api and the events service answer.
+# 1. The api, the events service and the website answer.
 if curl -fs -m 5 http://127.0.0.1:8080/health/ready > /dev/null; then
     report api ok ""
 else
@@ -58,6 +58,12 @@ if curl -fs -m 5 http://127.0.0.1:8081/health > /dev/null; then
     report events ok ""
 else
     report events fail "http://127.0.0.1:8081/health does not answer"
+fi
+
+if curl -fs -m 5 http://127.0.0.1:8082/developers > /dev/null; then
+    report web ok ""
+else
+    report web fail "the website (http://127.0.0.1:8082) does not answer"
 fi
 
 # 2. The worker keeps up: due jobs from its metrics (CYEX_TV_METRICS_BIND=0.0.0.0:9100).

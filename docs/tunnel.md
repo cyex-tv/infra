@@ -18,7 +18,7 @@ ingress:
   # Everything else on the API, including GraphQL and its WebSocket.
   - hostname: api.cyex.tv
     service: http://127.0.0.1:8080
-  # The website, once Phase 6 ships it.
+  # The website (the compose's `web` service).
   - hostname: cyex.tv
     service: http://127.0.0.1:8082
   # ... cyex.app's existing rules, unchanged ...
@@ -39,4 +39,8 @@ ingress:
 ## DNS
 
 Creating a public hostname in the dashboard adds the `CNAME` to the tunnel. Only `cyex.tv`
-and `api.cyex.tv` (and `www.cyex.tv`, redirecting to `cyex.tv`, with the website).
+and `api.cyex.tv`, plus `www.cyex.tv` redirecting to `cyex.tv`:
+- DNS: a proxied `CNAME www` → `cyex.tv`.
+- Rules → Redirect Rules → new rule, "cyex.tv: www": when hostname equals `www.cyex.tv`,
+  dynamic redirect to `concat("https://cyex.tv", http.request.uri.path)`, status 301, keep the
+  query string.
