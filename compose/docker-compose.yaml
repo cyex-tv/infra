@@ -1,11 +1,17 @@
 # cyex.tv in production (PLAN.md Phase 9). Its own project, network and volumes: nothing here
 # touches cyex-api's containers, network or config.
 #
-#   docker compose -f compose/docker-compose.yaml --env-file /etc/cyextv/compose.env up -d --build
+#   docker compose -f compose/docker-compose.yaml up -d --build
 #
-# The images build from a checkout of cyex-tv/platform next to this repo (PLATFORM_DIR,
-# default ../../platform). Ports bind to 127.0.0.1 only; the Cloudflare tunnel reaches them
-# (docs/tunnel.md). Secrets come from env files outside this repo (env/*.example).
+# Layout on the host: /srv/cyex-tv/infra (this repo), /srv/cyex-tv/infra/env (the real env files,
+# gitignored) and /srv/cyex-tv/platform (the images build from it).
+#   CYEXTV_ENV_DIR  where db.env, api.env, events.env and worker.env are
+#                   (default /srv/cyex-tv/infra/env)
+#   PLATFORM_DIR    the cyex-tv/platform checkout (default ../../platform, which is
+#                   /srv/cyex-tv/platform when this repo is at /srv/cyex-tv/infra)
+# Both can be set in the shell or in a file passed with --env-file. scripts/install.sh sets them.
+# Ports bind to 127.0.0.1 only; the Cloudflare tunnel reaches them (docs/tunnel.md). Secrets come
+# from the env files, never from this repo (env/*.example).
 name: cyex-tv
 
 x-limits: &small
@@ -22,7 +28,7 @@ services:
     image: postgres:17-alpine
     # A fixed name, so backups/backup.sh finds it.
     container_name: cyextv-db
-    env_file: [/etc/cyextv/db.env]
+    env_file: ["${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/db.env"]
     volumes:
       - tv-db:/var/lib/postgresql/data
     healthcheck:
@@ -42,7 +48,7 @@ services:
       context: ${PLATFORM_DIR:-../../platform}
       target: api
     image: cyex-tv-api:local
-    env_file: [/etc/cyextv/api.env]
+    env_file: ["${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/api.env"]
     environment:
       CYEX_TV_BIND: 0.0.0.0:8080
       CYEX_TV_TRUST_CLOUDFLARE: "true"
@@ -61,7 +67,7 @@ services:
       context: ${PLATFORM_DIR:-../../platform}
       target: events
     image: cyex-tv-events:local
-    env_file: [/etc/cyextv/events.env]
+    env_file: ["${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/events.env"]
     environment:
       CYEX_TV_BIND: 0.0.0.0:8081
       CYEX_TV_TRUST_CLOUDFLARE: "true"
@@ -81,7 +87,7 @@ services:
       context: ${PLATFORM_DIR:-../../platform}
       target: worker
     image: cyex-tv-worker:local
-    env_file: [/etc/cyextv/worker.env]
+    env_file: ["${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/worker.env"]
     environment:
       # /metrics on the private network only; monitoring/check.sh reads it.
       CYEX_TV_METRICS_BIND: 0.0.0.0:9100

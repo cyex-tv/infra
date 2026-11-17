@@ -49,9 +49,10 @@ A check alerts after failing twice in a row (about 10 minutes), and again when i
 
 Install:
 ```bash
-sudo cp env/check.env.example /etc/cyextv/check.env && sudo chmod 600 /etc/cyextv/check.env
+E=${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}
+sudo cp env/check.env.example "$E/check.env" && sudo chown root:docker "$E/check.env" && sudo chmod 640 "$E/check.env"
 sudo mkdir -p /var/lib/cyextv-check && sudo chown "$USER" /var/lib/cyextv-check
-( crontab -l 2>/dev/null; echo '*/5 * * * * /opt/cyextv/infra/monitoring/check.sh >> /var/log/cyextv-check.log 2>&1' ) | crontab -
+( crontab -l 2>/dev/null; echo '*/5 * * * * /srv/cyex-tv/infra/monitoring/check.sh >> /var/log/cyextv-check.log 2>&1' ) | crontab -
 ```
 Test the webhook once by stopping the events service for 10 minutes, or by setting
 `CYEXTV_DUE_MAX=-1` for two runs.

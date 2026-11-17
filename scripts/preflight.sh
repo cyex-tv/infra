@@ -1,12 +1,25 @@
 #!/usr/bin/env bash
 # Checks the env files before a start: every required value set, no placeholders left, the
 # database password the same everywhere, the R2 keys the same for api and worker.
-#   scripts/preflight.sh [dir]     (default /etc/cyextv)
+#   scripts/preflight.sh [dir]     (default $CYEXTV_ENV_DIR, else /srv/cyex-tv/infra/env)
+#   scripts/preflight.sh --git-only   just the "no env file is tracked by git" check
 # Prints the names of what's wrong, never the values. Exit 1 if anything required is missing.
 set -uo pipefail
-DIR="${1:-/etc/cyextv}"
+INFRA="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 warn=0
+
+# The real env files sit inside this git checkout (env/). Anything tracked there other than the
+# examples and the README is a secret about to be committed: fail loudly.
+tracked=$(git -c safe.directory="$INFRA" -C "$INFRA" ls-files env/ 2>/dev/null | grep -vE '^env/(README\.md|[^/]+\.example)$' || true)
+if [ -n "$tracked" ]; then
+    echo "FATAL    git tracks files in env/ that aren't examples (secrets in the repo?):" >&2
+    echo "$tracked" | sed 's/^/           /' >&2
+    echo "         remove them with: git rm --cached <file>, and rotate the secrets they held" >&2
+    fail=1
+fi
+if [ "${1:-}" = "--git-only" ]; then exit "$fail"; fi
+DIR="${1:-${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}}"
 
 bad() { echo "MISSING  $1"; fail=1; }
 soft() { echo "optional $1"; warn=1; }

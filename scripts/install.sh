@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # First install, or an update, of cyex.tv on the host. Run with sudo from the infra checkout:
-#   sudo scripts/install.sh [env dir]
-# The env dir (default ./etc-cyextv next to where you run it, else /etc/cyextv as it is) holds
-# db.env, api.env, events.env, worker.env and optionally check.env. It:
+#   sudo scripts/install.sh [source dir]
+# The env files live in $CYEXTV_ENV_DIR (default /srv/cyex-tv/infra/env, inside this checkout and
+# gitignored): db.env, api.env, events.env, worker.env, and optionally check.env, backup.env.
+# Without a source dir it uses the files already there. With one (and it isn't the same folder)
+# it copies the files in first. It:
 #   1. checks the tools (docker with compose, git, curl);
-#   2. clones or updates cyex-tv/platform next to this repo;
-#   3. installs the env files to /etc/cyextv (root:docker, 640) and runs the preflight;
+#   2. clones or updates cyex-tv/platform next to this repo (/srv/cyex-tv/platform);
+#   3. sets the env dir to root:docker 750 and the files to 640, checks that no env file is
+#      tracked by git or world-readable, and runs the preflight;
 #   4. builds and starts the stack, and waits until api, events and web answer;
 #   5. installs the nightly backup and the 5-minute check in the invoking user's crontab.
 # Nothing here touches cyex-api's containers, network, env or tunnel rules.
@@ -14,8 +17,9 @@ set -euo pipefail
 INFRA="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT="$(dirname "$INFRA")"
 PLATFORM="${PLATFORM_DIR:-$ROOT/platform}"
-SRC="${1:-$PWD/etc-cyextv}"
-ETC=/etc/cyextv
+SRC="${1:-}"
+ENV_DIR="${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}"
+export CYEXTV_ENV_DIR="$ENV_DIR"
 USER_NAME="${SUDO_USER:-$USER}"
 
 step() { printf '\n== %s\n' "$1"; }
@@ -41,22 +45,37 @@ else
 fi
 git -C "$PLATFORM" log -1 --format='%h %s'
 
-step "Env files ($ETC)"
-mkdir -p "$ETC"
-if [ -d "$SRC" ] && [ "$(cd "$SRC" && pwd)" != "$ETC" ]; then
-    for f in db.env api.env events.env worker.env check.env; do
-        [ -f "$SRC/$f" ] && install -m 640 -o root -g docker "$SRC/$f" "$ETC/$f" && echo "installed $f"
-    done
+step "Env files ($ENV_DIR)"
+mkdir -p "$ENV_DIR"
+if [ -n "$SRC" ]; then
+    [ -d "$SRC" ] || die "$SRC isn't a folder"
+    if [ "$(cd "$SRC" && pwd)" != "$(cd "$ENV_DIR" && pwd)" ]; then
+        for f in db.env api.env events.env worker.env check.env backup.env compose.env; do
+            [ -f "$SRC/$f" ] && install -m 640 -o root -g docker "$SRC/$f" "$ENV_DIR/$f" && echo "installed $f"
+        done
+    fi
 else
-    echo "using $ETC as it is"
+    echo "using the files already in $ENV_DIR"
 fi
-chown root:docker "$ETC"
-chmod 750 "$ETC"
-"$INFRA/scripts/preflight.sh" "$ETC" || die "the preflight failed; fix the env files and run this again"
+chown root:docker "$ENV_DIR"
+chmod 750 "$ENV_DIR"
+for f in "$ENV_DIR"/*.env; do
+    [ -e "$f" ] || continue
+    chown root:docker "$f"
+    chmod 640 "$f"
+done
+# The real files sit inside a git checkout: nothing in env/ may be tracked except the examples.
+"$INFRA/scripts/preflight.sh" --git-only || die "env files are tracked by git; see above"
+for f in "$ENV_DIR"/*.env; do
+    [ -e "$f" ] || continue
+    perms=$(stat -c '%a' "$f")
+    [ "${perms: -1}" = 0 ] || die "$(basename "$f") is world-readable ($perms); refusing to run"
+done
+"$INFRA/scripts/preflight.sh" "$ENV_DIR" || die "the preflight failed; fix the env files and run this again"
 
 step "Build and start (the first build takes a while)"
 cd "$INFRA"
-PLATFORM_DIR="$PLATFORM" docker compose -f compose/docker-compose.yaml up -d --build
+PLATFORM_DIR="$PLATFORM" CYEXTV_ENV_DIR="$ENV_DIR" docker compose -f compose/docker-compose.yaml up -d --build
 
 step "Waiting for the services"
 wait_for() {
@@ -82,9 +101,9 @@ chown "$USER_NAME" /var/log/cyextv-backup.log /var/log/cyextv-check.log
 current=$(sudo -u "$USER_NAME" crontab -l 2>/dev/null || true)
 add=""
 grep -q 'backups/backup.sh' <<< "$current" \
-    || add+="30 3 * * * $INFRA/backups/backup.sh >> /var/log/cyextv-backup.log 2>&1"$'\n'
+    || add+="30 3 * * * CYEXTV_ENV_DIR=$ENV_DIR $INFRA/backups/backup.sh >> /var/log/cyextv-backup.log 2>&1"$'\n'
 grep -q 'monitoring/check.sh' <<< "$current" \
-    || add+="*/5 * * * * $INFRA/monitoring/check.sh >> /var/log/cyextv-check.log 2>&1"$'\n'
+    || add+="*/5 * * * * CYEXTV_ENV_DIR=$ENV_DIR $INFRA/monitoring/check.sh >> /var/log/cyextv-check.log 2>&1"$'\n'
 if [ -n "$add" ]; then
     printf '%s\n%s' "$current" "$add" | sed '/^$/d' | sudo -u "$USER_NAME" crontab -
     echo "added to $USER_NAME's crontab"

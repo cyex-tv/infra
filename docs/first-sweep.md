@@ -1,6 +1,6 @@
 # The first manual sweep
 
-After `scripts/install.sh`, the tunnel hostnames and a green `scripts/smoke.sh`. About an
+After `scripts/install.sh` (stack at `/srv/cyex-tv`, env files in `/srv/cyex-tv/infra/env`), the tunnel hostnames and a green `scripts/smoke.sh`. About an
 hour. Note anything off with the step number; a screenshot helps.
 
 Use a normal browser window signed in to Twitch and Kick. Open the site at `https://cyex.tv`.

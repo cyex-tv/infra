@@ -4,7 +4,7 @@ The documented process PLAN.md Phase 9 asks for, until there is a status page.
 
 ## When something is wrong
 
-1. **Look** (from `/opt/cyextv/infra`, with `C="docker compose -f compose/docker-compose.yaml"`):
+1. **Look** (from `/srv/cyex-tv/infra`, with `C="docker compose -f compose/docker-compose.yaml"`):
    `$C ps` and `$C logs --since 30m <service>`.
    `curl -fs http://127.0.0.1:8080/health/ready` says whether the api reaches its database.
 2. **Say so:** post in the cyex.tv announcements channel what's broken and that it's being

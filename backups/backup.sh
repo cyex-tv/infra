@@ -2,7 +2,7 @@
 # Nightly tv-db dump (PLAN.md Phase 9): kept on the host for 14 days and copied off it.
 #
 # Run from cron or a systemd timer as a user in the docker group, e.g. at 03:30 every night:
-#   30 3 * * * /opt/cyextv/infra/backups/backup.sh >> /var/log/cyextv-backup.log 2>&1
+#   30 3 * * * /srv/cyex-tv/infra/backups/backup.sh >> /var/log/cyextv-backup.log 2>&1
 #
 # Off-host copy: an rclone remote named in CYEXTV_BACKUP_REMOTE (for example
 # `r2-backups:cyex-tv-backups`, a separate bucket with its own token, not the CDN bucket).
