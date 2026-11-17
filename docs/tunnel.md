@@ -1,0 +1,42 @@
+# Cloudflare tunnel hostnames
+
+cyex.tv uses the host's existing `cloudflared` tunnel with **new hostnames only**. Every
+cyex.app hostname, route and rule stays as it is (platform AGENTS.md, "Separation from
+cyex.app").
+
+## Ingress rules to add
+
+In the tunnel's config (or Zero Trust → Networks → Tunnels → the tunnel → Public Hostnames), add
+these, **above** the final catch-all rule:
+
+```yaml
+ingress:
+  # The event WebSocket (ADR 0005) goes to the events service.
+  - hostname: api.cyex.tv
+    path: ^/v1/events$
+    service: http://127.0.0.1:8081
+  # Everything else on the API, including GraphQL and its WebSocket.
+  - hostname: api.cyex.tv
+    service: http://127.0.0.1:8080
+  # The website, once Phase 6 ships it.
+  - hostname: cyex.tv
+    service: http://127.0.0.1:8082
+  # ... cyex.app's existing rules, unchanged ...
+  - service: http_status:404
+```
+
+`cdn.cyex.tv` isn't a tunnel hostname: it is R2's custom domain (platform
+`docs/setup/owner-steps.md`, Phase 3).
+
+## Settings that matter
+
+- **WebSockets** are on by default on Cloudflare; keep them on for `api.cyex.tv`.
+- The event socket sends a heartbeat every 20 s, under Cloudflare's 100 s idle timeout.
+- The api and events services take the client IP from `CF-Connecting-IP`
+  (`CYEX_TV_TRUST_CLOUDFLARE=true` in the compose). Their ports bind to 127.0.0.1, so nothing
+  reaches them except through the tunnel.
+
+## DNS
+
+Creating a public hostname in the dashboard adds the `CNAME` to the tunnel. Only `cyex.tv`
+and `api.cyex.tv` (and `www.cyex.tv`, redirecting to `cyex.tv`, with the website).
