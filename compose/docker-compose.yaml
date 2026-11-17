@@ -46,6 +46,8 @@ services:
     environment:
       CYEX_TV_BIND: 0.0.0.0:8080
       CYEX_TV_TRUST_CLOUDFLARE: "true"
+      # /metrics on the private network only: no port is published for it.
+      CYEX_TV_METRICS_BIND: 0.0.0.0:9100
     ports: ["127.0.0.1:8080:8080"]
     depends_on:
       tv-db: { condition: service_healthy }
@@ -63,6 +65,8 @@ services:
     environment:
       CYEX_TV_BIND: 0.0.0.0:8081
       CYEX_TV_TRUST_CLOUDFLARE: "true"
+      # /metrics on the private network only: no port is published for it.
+      CYEX_TV_METRICS_BIND: 0.0.0.0:9100
     ports: ["127.0.0.1:8081:8081"]
     depends_on:
       tv-db: { condition: service_healthy }
@@ -78,6 +82,9 @@ services:
       target: worker
     image: cyex-tv-worker:local
     env_file: [/etc/cyextv/worker.env]
+    environment:
+      # /metrics on the private network only; monitoring/check.sh reads it.
+      CYEX_TV_METRICS_BIND: 0.0.0.0:9100
     depends_on:
       tv-db: { condition: service_healthy }
       api: { condition: service_started }

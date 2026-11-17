@@ -22,6 +22,7 @@ First time, on the host (as a user in the `docker` group):
    ```
 6. Install the nightly backup (`backups/backup.sh`) and run the restore test once
    (`backups/restore-test.sh`); write the result in `docs/restores.md`.
+7. Install the alert check (`docs/monitoring.md`).
 
 ## Updating
 
