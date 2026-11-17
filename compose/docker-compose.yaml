@@ -97,7 +97,9 @@ services:
   web:
     <<: *small
     build:
-      context: ${PLATFORM_DIR:-../../platform}/apps/web
+      # From the platform root: the API reference page is built from openapi/ and schema/.
+      context: ${PLATFORM_DIR:-../../platform}
+      dockerfile: apps/web/Dockerfile
     image: cyex-tv-web:local
     environment:
       ORIGIN: https://cyex.tv
