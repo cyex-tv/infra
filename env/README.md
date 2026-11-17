@@ -10,5 +10,6 @@ Real values never go in this repo or a chat.
 | `api.env` | api | the database URL, OAuth clients, the owner, storage, the CDN URL |
 | `events.env` | events | the database URL |
 | `worker.env` | worker | the database URL, storage, the Cloudflare purge token |
+| `check.env` | `monitoring/check.sh` | the alert webhook (`chmod 600`) |
 
 The database URL points at the compose service: `postgres://cyextv:<password>@tv-db:5432/cyextv`.
