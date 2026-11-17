@@ -6,6 +6,9 @@ dist/
 .env
 .env.*
 !.env.example
+# The real env files live in env/ inside the server checkout. Never commit them.
+env/*.env
+!env/*.env.example
 *.log
 .DS_Store
 Thumbs.db

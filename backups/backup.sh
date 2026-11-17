@@ -2,7 +2,7 @@
 # Nightly tv-db dump (PLAN.md Phase 9): kept on the host for 14 days and copied off it.
 #
 # Run from cron or a systemd timer as a user in the docker group, e.g. at 03:30 every night:
-#   30 3 * * * /opt/cyextv/infra/backups/backup.sh >> /var/log/cyextv-backup.log 2>&1
+#   30 3 * * * /srv/cyex-tv/infra/backups/backup.sh >> /var/log/cyextv-backup.log 2>&1
 #
 # Off-host copy: an rclone remote named in CYEXTV_BACKUP_REMOTE (for example
 # `r2-backups:cyex-tv-backups`, a separate bucket with its own token, not the CDN bucket).
@@ -12,11 +12,11 @@
 # encrypted `.dump.age` is uploaded. The private key stays off the host (see backups/restore-test.sh).
 # Without it the plain dump is uploaded as before, and the script warns loudly.
 #
-# Settings are read from the environment, and from /etc/cyextv/backup.env if that file exists
+# Settings are read from the environment, and from ${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/backup.env if that file exists
 # (see env/backup.env.example); the file wins.
 set -euo pipefail
 
-ENV_FILE="${CYEXTV_BACKUP_ENV:-/etc/cyextv/backup.env}"
+ENV_FILE="${CYEXTV_BACKUP_ENV:-${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/backup.env}"
 if [ -r "$ENV_FILE" ]; then
     set -a
     # shellcheck disable=SC1090

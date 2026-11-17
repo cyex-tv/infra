@@ -11,6 +11,6 @@ Real values never go in this repo or a chat.
 | `events.env` | events | the database URL |
 | `worker.env` | worker | the database URL, storage, the Cloudflare purge token |
 | `check.env` | `monitoring/check.sh` | the alert webhook (`chmod 600`) |
-| `backup.env` | `backups/backup.sh` | optional: the rclone remote and the age public key for encrypting dumps (`chmod 600`) |
+| `backup.env` | `backups/backup.sh` | optional: the rclone remote and the age public key for encrypting dumps |
 
 The database URL points at the compose service: `postgres://cyextv:<password>@tv-db:5432/cyextv`.
