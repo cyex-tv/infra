@@ -17,8 +17,9 @@ Status: Phase 9 in progress. See the plan in [cyex-tv/platform](https://github.c
 | Where | What |
 |---|---|
 | `compose/docker-compose.yaml` | `tv-db`, api, events and worker on their own network, ports on 127.0.0.1, resource limits |
-| `env/` | the env files the compose reads from `/etc/cyextv/`, as examples |
-| `docs/deploy.md` | first deploy, updates, rollback |
+| `env/` | the env files as examples; the real ones live in `/srv/cyex-tv/infra/env/` on the host (gitignored) |
+| `scripts/` | `install.sh` (first install and updates), `preflight.sh` (env check), `smoke.sh` |
+| `docs/deploy.md` | the host layout (`/srv/cyex-tv/infra`, `/srv/cyex-tv/platform`), first deploy, updates, rollback |
 | `docs/tunnel.md` | the new tunnel hostnames (`api.cyex.tv`, `cyex.tv`), cyex.app untouched |
 | `backups/` | the nightly dump with an off-host copy, and the restore test |
 | `docs/monitoring.md`, `docs/incidents.md` | health, logs, alerts to build, the incident process |
