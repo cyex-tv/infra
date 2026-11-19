@@ -9,6 +9,11 @@
 #                   (default /srv/cyex-tv/infra/env)
 #   PLATFORM_DIR    the cyex-tv/platform checkout (default ../../platform, which is
 #                   /srv/cyex-tv/platform when this repo is at /srv/cyex-tv/infra)
+#   PUBLIC_API_URL  the API the website talks to (default https://api.cyex.tv)
+#   PUBLIC_CDN_URL  where emote, badge and paint pictures are served, when it isn't
+#                   https://cdn.cyex.tv (the API's CYEX_TV_CDN_URL; default empty)
+#                   Both are baked into the website's Content-Security-Policy at build time,
+#                   so the web image is rebuilt (--build) after changing them.
 # Both can be set in the shell or in a file passed with --env-file. scripts/install.sh sets them.
 # Ports bind to 127.0.0.1 only; the Cloudflare tunnel reaches them (docs/tunnel.md). Secrets come
 # from the env files, never from this repo (env/*.example).
@@ -106,10 +111,14 @@ services:
       # From the platform root: the API reference page is built from openapi/ and schema/.
       context: ${PLATFORM_DIR:-../../platform}
       dockerfile: apps/web/Dockerfile
+      # The CSP allows the API and picture origins the build sees (platform apps/web/Dockerfile).
+      args:
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-https://api.cyex.tv}
+        PUBLIC_CDN_URL: ${PUBLIC_CDN_URL:-}
     image: cyex-tv-web:local
     environment:
       ORIGIN: https://cyex.tv
-      PUBLIC_API_URL: https://api.cyex.tv
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-https://api.cyex.tv}
     ports: ["127.0.0.1:8082:3000"]
     deploy:
       resources:
