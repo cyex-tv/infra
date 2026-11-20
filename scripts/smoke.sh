@@ -53,10 +53,10 @@ ws=$(curl -s -o /dev/null -m 5 -w '%{http_code}' --http1.1 "$API/v1/events" \
 [ "$ws" = 101 ] && pass "event socket upgrades" || fail "event socket (want 101, got $ws: is the /v1/events tunnel rule first?)"
 
 # The CDN
-[ "$(code "$CDN/emotes/smoke-test/2x.webp")" = 404 ] && pass "CDN /emotes reaches R2" \
+[ "$(code "$CDN/emotes/smoke-test/2x.webp")" = 404 ] && pass "CDN /emotes answers" \
     || fail "CDN /emotes (want 404 for a missing file)"
-[ "$(code "$CDN/originals/smoke-test")" = 403 ] && pass "CDN /originals is blocked" \
-    || fail "CDN /originals (want 403: the WAF rule)"
+[ "$(code "$CDN/originals/smoke-test")" = 404 ] && pass "CDN /originals is closed" \
+    || fail "CDN /originals (want 404: only /emotes and /cosmetics are served)"
 cors=$(curl -s -o /dev/null -D - -m 15 -H 'Origin: https://www.twitch.tv' "$CDN/emotes/smoke-test/2x.webp" \
     | tr -d '\r' | grep -i '^access-control-allow-origin:' | cut -d' ' -f2)
 [ "$cors" = '*' ] && pass "CDN CORS" || fail "CDN CORS (want *, got: ${cors:-none})"

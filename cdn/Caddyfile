@@ -1,0 +1,84 @@
+# cdn.cyex.tv: serves /emotes/* and /cosmetics/* from the bucket folder, read-only, and nothing
+# else. Every number below can be changed from env/cdn.env (docs/self-hosted-cdn.md); the value
+# after the colon is the default. Comment a variable out to get its default; don't set it empty.
+{
+	servers {
+		# Slow clients can't hold connections open.
+		timeouts {
+			read_header {$CDN_READ_HEADER_TIMEOUT:5s}
+			read_body {$CDN_READ_TIMEOUT:10s}
+			write {$CDN_WRITE_TIMEOUT:30s}
+			idle {$CDN_IDLE_TIMEOUT:30s}
+		}
+		max_header_size {$CDN_MAX_HEADER_SIZE:16KB}
+		# Option A (DNS only): nobody sits in front of us, so trust nobody. Behind a proxy, list
+		# its address ranges here, or the rate limit sees the proxy instead of the visitor.
+		trusted_proxies static {$CDN_TRUSTED_PROXIES:127.0.0.1/32}
+	}
+}
+
+{$CDN_HOST:cdn.cyex.tv} {
+	root * /srv/cdn/{$CDN_BUCKET:cyex-tv-cdn}
+
+	log {
+		output stdout
+		format json
+	}
+
+	# Nobody uploads here. 0 would mean "no limit" to Caddy, so the smallest real limit is used.
+	request_body {
+		max_size {$CDN_MAX_BODY:1}
+	}
+
+	route {
+		# Two limits per visitor: a steady one and a short-burst one. Both answer 429.
+		# {client_ip} is the peer address, or the real visitor behind CDN_TRUSTED_PROXIES.
+		rate_limit {
+			zone per_ip_window {
+				key {client_ip}
+				events {$CDN_RATE_EVENTS:600}
+				window {$CDN_RATE_WINDOW:1m}
+				ipv4_prefix {$CDN_RATE_IPV4_PREFIX:32}
+				ipv6_prefix {$CDN_RATE_IPV6_PREFIX:64}
+			}
+			zone per_ip_burst {
+				key {client_ip}
+				events {$CDN_BURST_EVENTS:150}
+				window {$CDN_BURST_WINDOW:10s}
+				ipv4_prefix {$CDN_RATE_IPV4_PREFIX:32}
+				ipv6_prefix {$CDN_RATE_IPV6_PREFIX:64}
+			}
+		}
+
+		# Only reading.
+		@badmethod not method GET HEAD
+		header @badmethod Allow "GET, HEAD"
+		respond @badmethod "method not allowed" 405
+
+		# Only these two folders. /originals/ and anything new stays closed until listed here.
+		@public path /emotes/* /cosmetics/*
+		header @public {
+			Cache-Control "public, max-age=31536000, immutable"
+			Access-Control-Allow-Origin "*"
+			X-Content-Type-Options "nosniff"
+		}
+		# No directory listing, no index files: a folder URL is a plain 404.
+		file_server @public {
+			index off
+		}
+
+		respond "404 not found" 404
+	}
+
+	# Every error, cheaply. The long cache header above is replaced here, so a missing file
+	# is never cached for a year (a hash that isn't there yet may exist in a minute).
+	handle_errors {
+		@notfound expression {http.error.status_code} == 404
+		@other expression {http.error.status_code} != 404
+		header @notfound Cache-Control "public, max-age=60"
+		header @other Cache-Control "no-store"
+		header Access-Control-Allow-Origin "*"
+		header X-Content-Type-Options "nosniff"
+		respond "{http.error.status_code} {http.error.status_text}" {http.error.status_code}
+	}
+}

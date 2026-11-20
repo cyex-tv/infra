@@ -71,6 +71,15 @@ else
     report web fail "the website (http://127.0.0.1:8082) does not answer"
 fi
 
+# The CDN answers (a missing file is a 404, which is fine; a dead or erroring host is not).
+cdn_url="${CYEXTV_CDN_URL:-https://cdn.cyex.tv}"
+cdn_code=$(curl -s -o /dev/null -m 10 -w '%{http_code}' "$cdn_url/emotes/health-probe")
+if [ "$cdn_code" = 404 ] || [ "$cdn_code" = 200 ]; then
+    report cdn ok ""
+else
+    report cdn fail "$cdn_url/emotes/health-probe answered ${cdn_code:-nothing} (want 404 or 200)"
+fi
+
 # 2. The worker keeps up: due jobs from its metrics (CYEX_TV_METRICS_BIND=0.0.0.0:9100).
 worker=$(container worker)
 if [ -z "$worker" ]; then

@@ -124,6 +124,79 @@ services:
       resources:
         limits: { memory: 256m, cpus: "0.5" }
 
+  # The self-hosted CDN (docs/self-hosted-cdn.md). tv-s3 is the S3 gateway the api and worker
+  # write to (http://tv-s3:7070 on the cyextv network); tv-cdn serves the same folder, read-only,
+  # as https://cdn.cyex.tv. Objects are plain files under ${CDN_DATA_DIR}/<bucket>/.
+  tv-s3:
+    <<: *small
+    image: versity/versitygw:v1.10.0
+    environment:
+      VGW_BACKEND: posix
+      VGW_BACKEND_ARG: /data
+    env_file: ["${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/s3.env"]
+    volumes:
+      - ${CDN_DATA_DIR:-/srv/cyex-tv/cdn/data}:/data
+    ports: ["127.0.0.1:7070:7070"]
+    deploy:
+      resources:
+        limits: { memory: 512m, cpus: "1.0" }
+
+  # Makes the bucket on first start and exits. Safe to run again: it only creates what is missing.
+  tv-s3-init:
+    image: amazon/aws-cli:2.22.35
+    restart: "no"
+    networks: [cyextv]
+    env_file:
+      - ${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/s3.env
+      - path: ${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/cdn.env
+        required: false
+    environment:
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        export AWS_ACCESS_KEY_ID="$$ROOT_ACCESS_KEY" AWS_SECRET_ACCESS_KEY="$$ROOT_SECRET_KEY"
+        bucket="$${CDN_BUCKET:-cyex-tv-cdn}"
+        i=0
+        until aws --endpoint-url http://tv-s3:7070 s3api head-bucket --bucket "$$bucket" 2>/dev/null \
+            || aws --endpoint-url http://tv-s3:7070 s3api create-bucket --bucket "$$bucket"; do
+          i=$$((i + 1))
+          [ "$$i" -lt 30 ] || { echo "tv-s3 didn't answer"; exit 1; }
+          sleep 2
+        done
+        echo "bucket $$bucket is ready"
+    depends_on:
+      tv-s3: { condition: service_started }
+
+  # Caddy: TLS for cdn.cyex.tv, per-IP rate limits, only /emotes/ and /cosmetics/ (cdn/Caddyfile).
+  # Ports 80 and 443 are public on purpose (DNS only, Option A). The data folder is read-only here.
+  tv-cdn:
+    <<: *small
+    build:
+      context: ../cdn
+    image: cyex-tv-cdn:local
+    env_file:
+      - path: ${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/cdn.env
+        required: false
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ${CDN_DATA_DIR:-/srv/cyex-tv/cdn/data}:/srv/cdn:ro
+      - tv-cdn-certs:/data
+      - tv-cdn-config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      tv-s3-init: { condition: service_completed_successfully }
+    deploy:
+      resources:
+        limits: { memory: 512m, cpus: "1.0" }
+
 networks:
   cyextv:
     name: cyextv
@@ -131,3 +204,8 @@ networks:
 volumes:
   tv-db:
     name: cyextv-db
+  # Caddy's certificates and account key. Losing them only means asking Let's Encrypt again.
+  tv-cdn-certs:
+    name: cyextv-cdn-certs
+  tv-cdn-config:
+    name: cyextv-cdn-config

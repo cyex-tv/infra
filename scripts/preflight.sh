@@ -75,16 +75,29 @@ for n in CYEX_TV_S3_ENDPOINT CYEX_TV_S3_BUCKET CYEX_TV_S3_ACCESS_KEY_ID CYEX_TV_
 done
 
 endpoint=$(value api.env CYEX_TV_S3_ENDPOINT)
-[ -z "$endpoint" ] || [[ "$endpoint" =~ ^https://[0-9a-f]{32}\.r2\.cloudflarestorage\.com/?$ ]] \
-    || bad "api.env: CYEX_TV_S3_ENDPOINT isn't https://<32 hex account id>.r2.cloudflarestorage.com"
+[ -z "$endpoint" ] || [[ "$endpoint" =~ ^http://tv-s3:7070/?$ ]] \
+    || [[ "$endpoint" =~ ^https://[0-9a-f]{32}\.r2\.cloudflarestorage\.com/?$ ]] \
+    || bad "api.env: CYEX_TV_S3_ENDPOINT isn't http://tv-s3:7070 (self-hosted) or https://<32 hex account id>.r2.cloudflarestorage.com"
+selfhosted=0
+[[ "$endpoint" =~ ^http://tv-s3:7070/?$ ]] && selfhosted=1
+
+# The self-hosted CDN has its own root keys, and they are the keys the api and worker use.
+if [ "$selfhosted" = 1 ]; then
+    need s3.env ROOT_ACCESS_KEY
+    need s3.env ROOT_SECRET_KEY
+    [ "$(value s3.env ROOT_ACCESS_KEY)" = "$(value api.env CYEX_TV_S3_ACCESS_KEY_ID)" ] \
+        || bad "s3.env ROOT_ACCESS_KEY differs from api.env CYEX_TV_S3_ACCESS_KEY_ID"
+    [ "$(value s3.env ROOT_SECRET_KEY)" = "$(value api.env CYEX_TV_S3_SECRET_ACCESS_KEY)" ] \
+        || bad "s3.env ROOT_SECRET_KEY differs from api.env CYEX_TV_S3_SECRET_ACCESS_KEY"
+fi
 owners=$(value api.env CYEX_TV_OWNER_IDS)
 [ -z "$owners" ] || [[ "$owners" =~ ^((twitch|kick):[0-9]+|[0-9A-Z]{26})(,((twitch|kick):[0-9]+|[0-9A-Z]{26}))*$ ]] \
     || bad "api.env: CYEX_TV_OWNER_IDS isn't twitch:<id>,kick:<id>"
 
-# Optional, but say so.
-[ -n "$(value worker.env CYEX_TV_CLOUDFLARE_PURGE_TOKEN)" ] \
+# Optional, but say so. The purge only matters while cdn.cyex.tv sits behind Cloudflare's cache.
+[ "$selfhosted" = 1 ] || [ -n "$(value worker.env CYEX_TV_CLOUDFLARE_PURGE_TOKEN)" ] \
     || soft "worker.env: CYEX_TV_CLOUDFLARE_PURGE_TOKEN (takedowns won't purge the CDN)"
-[ -n "$(value worker.env CYEX_TV_CLOUDFLARE_ZONE_ID)" ] \
+[ "$selfhosted" = 1 ] || [ -n "$(value worker.env CYEX_TV_CLOUDFLARE_ZONE_ID)" ] \
     || soft "worker.env: CYEX_TV_CLOUDFLARE_ZONE_ID (takedowns won't purge the CDN)"
 [ -r "$DIR/check.env" ] && [ -n "$(value check.env CYEXTV_ALERT_WEBHOOK)" ] \
     || soft "check.env: CYEXTV_ALERT_WEBHOOK (alerts only go to the log)"
