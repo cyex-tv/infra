@@ -128,7 +128,7 @@ services:
   # write to (http://tv-s3:7070 on the cyextv network); tv-cdn serves the same folder, read-only,
   # as https://cdn.cyex.tv. Objects are plain files under ${CDN_DATA_DIR}/<bucket>/.
   # Profile "cdn": these start only with `--profile cdn`, so a plain `up` on a host that still
-  # serves from R2 needs no s3.env and leaves ports 80/443 alone.
+  # serves from R2 needs no s3.env.
   tv-s3:
     <<: *small
     profiles: ["cdn"]
@@ -173,7 +173,8 @@ services:
       tv-s3: { condition: service_started }
 
   # Caddy: TLS for cdn.cyex.tv, per-IP rate limits, only /emotes/ and /cosmetics/ (cdn/Caddyfile).
-  # Ports 80 and 443 are public on purpose (DNS only, Option A). The data folder is read-only here.
+  # No public ports: it sits behind the Cloudflare tunnel, which does TLS. The data folder is
+  # read-only here.
   tv-cdn:
     <<: *small
     profiles: ["cdn"]
@@ -183,13 +184,10 @@ services:
     env_file:
       - path: ${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/cdn.env
         required: false
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+    # Only the host's cloudflared reaches it: cdn.cyex.tv is a tunnel hostname (docs/tunnel.md).
+    ports: ["127.0.0.1:8083:80"]
     volumes:
       - ${CDN_DATA_DIR:-/srv/cyex-tv/cdn/data}:/srv/cdn:ro
-      - tv-cdn-certs:/data
       - tv-cdn-config:/config
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
@@ -209,8 +207,5 @@ networks:
 volumes:
   tv-db:
     name: cyextv-db
-  # Caddy's certificates and account key. Losing them only means asking Let's Encrypt again.
-  tv-cdn-certs:
-    name: cyextv-cdn-certs
   tv-cdn-config:
     name: cyextv-cdn-config
