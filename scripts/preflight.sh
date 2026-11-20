@@ -89,6 +89,11 @@ if [ "$selfhosted" = 1 ]; then
         || bad "s3.env ROOT_ACCESS_KEY differs from api.env CYEX_TV_S3_ACCESS_KEY_ID"
     [ "$(value s3.env ROOT_SECRET_KEY)" = "$(value api.env CYEX_TV_S3_SECRET_ACCESS_KEY)" ] \
         || bad "s3.env ROOT_SECRET_KEY differs from api.env CYEX_TV_S3_SECRET_ACCESS_KEY"
+    # versitygw only takes requests signed for its own region.
+    for f in api.env worker.env; do
+        [ "$(value $f CYEX_TV_S3_REGION)" = us-east-1 ] \
+            || bad "$f: CYEX_TV_S3_REGION must be us-east-1 for tv-s3 (it is '$(value $f CYEX_TV_S3_REGION)')"
+    done
 fi
 owners=$(value api.env CYEX_TV_OWNER_IDS)
 [ -z "$owners" ] || [[ "$owners" =~ ^((twitch|kick):[0-9]+|[0-9A-Z]{26})(,((twitch|kick):[0-9]+|[0-9A-Z]{26}))*$ ]] \
