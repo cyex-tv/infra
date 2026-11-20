@@ -184,7 +184,8 @@ services:
     env_file:
       - path: ${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/cdn.env
         required: false
-    # Only the host's cloudflared reaches it: cdn.cyex.tv is a tunnel hostname (docs/tunnel.md).
+    # cdn.cyex.tv is a tunnel hostname (docs/tunnel.md): cloudflared reaches cyex-tv-tv-cdn-1:80 on
+    # the cyextv network. The host port is for checks on the server only.
     ports: ["127.0.0.1:8083:80"]
     volumes:
       - ${CDN_DATA_DIR:-/srv/cyex-tv/cdn/data}:/srv/cdn:ro
