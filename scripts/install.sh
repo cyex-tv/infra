@@ -2,7 +2,7 @@
 # First install, or an update, of cyex.tv on the host. Run with sudo from the infra checkout:
 #   sudo scripts/install.sh [source dir]
 # The env files live in $CYEXTV_ENV_DIR (default /srv/cyex-tv/infra/env, inside this checkout and
-# gitignored): db.env, api.env, events.env, worker.env, and optionally check.env, backup.env.
+# gitignored): db.env, api.env, events.env, worker.env, s3.env, and optionally cdn.env, check.env, backup.env.
 # Without a source dir it uses the files already there. With one (and it isn't the same folder)
 # it copies the files in first. It:
 #   1. checks the tools (docker with compose, git, curl);
@@ -50,7 +50,7 @@ mkdir -p "$ENV_DIR"
 if [ -n "$SRC" ]; then
     [ -d "$SRC" ] || die "$SRC isn't a folder"
     if [ "$(cd "$SRC" && pwd)" != "$(cd "$ENV_DIR" && pwd)" ]; then
-        for f in db.env api.env events.env worker.env check.env backup.env compose.env; do
+        for f in db.env api.env events.env worker.env s3.env cdn.env check.env backup.env compose.env; do
             [ -f "$SRC/$f" ] && install -m 640 -o root -g docker "$SRC/$f" "$ENV_DIR/$f" && echo "installed $f"
         done
     fi

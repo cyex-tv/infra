@@ -20,6 +20,8 @@ repo or a chat.
 | `api.env` | api | the database URL, OAuth clients, the owner, storage, the CDN URL |
 | `events.env` | events | the database URL |
 | `worker.env` | worker | the database URL, storage, the Cloudflare purge token |
+| `s3.env` | `tv-s3` and the bucket init | `ROOT_ACCESS_KEY` and `ROOT_SECRET_KEY`, the same pair as the S3 keys in `api.env` and `worker.env` |
+| `cdn.env` | `tv-cdn` | optional: the CDN's rate limits, timeouts and host name (`cdn.env.example`) |
 | `check.env` | `monitoring/check.sh` | the alert webhook |
 | `backup.env` | `backups/backup.sh` | optional: the rclone remote and the age public key for encrypting dumps |
 

@@ -40,10 +40,11 @@ A check alerts after failing twice in a row (about 10 minutes), and again when i
 | `api` | `/health/ready` doesn't answer (the api or `tv-db` is down) |
 | `events` | `/health` on events doesn't answer |
 | `web` | the website doesn't answer on `/developers` |
+| `cdn` | `https://cdn.cyex.tv/emotes/health-probe` answers anything but 404 or 200 (Caddy or the host is down; a 429 from your own address counts as a fail, so the check runs from the host itself) |
 | `worker` | the worker isn't running, or its metrics don't answer |
 | `worker-db` | the worker can't reach `tv-db` |
 | `queue` | more than 100 jobs are due (the worker is stuck or too slow) |
-| `storage` | `storage answered` errors in the worker's log in the last 10 minutes (R2) |
+| `storage` | `storage answered` errors in the worker's log in the last 10 minutes (tv-s3 or R2) |
 | `disk` | the Docker disk is 80 % full or more |
 | `r2-usage` | (optional, hourly) this month's R2 storage, class A or class B operations pass 80 % of the free tier (10 GB, 1.000.000, 10.000.000), counted across the whole Cloudflare account. Alerts on the first run, since usage only grows within a month |
 

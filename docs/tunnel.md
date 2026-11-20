@@ -25,7 +25,8 @@ ingress:
   - service: http_status:404
 ```
 
-`cdn.cyex.tv` isn't a tunnel hostname: it is R2's custom domain (platform
+`cdn.cyex.tv` isn't a tunnel hostname: it is a DNS-only record to the host, served by the `tv-cdn`
+compose service (`docs/self-hosted-cdn.md`; before that it was R2's custom domain, platform
 `docs/setup/owner-steps.md`, Phase 3).
 
 ## Settings that matter
