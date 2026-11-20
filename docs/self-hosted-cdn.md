@@ -54,9 +54,11 @@ CYEX_TV_S3_ENDPOINT=http://tv-s3:7070
 CYEX_TV_S3_BUCKET=cyex-tv-cdn
 CYEX_TV_S3_ACCESS_KEY_ID=<ROOT_ACCESS_KEY>
 CYEX_TV_S3_SECRET_ACCESS_KEY=<ROOT_SECRET_KEY>
-CYEX_TV_S3_REGION=auto
+CYEX_TV_S3_REGION=us-east-1
 CYEX_TV_CDN_URL=https://cdn.cyex.tv
 ```
+The region must be `us-east-1`: `tv-s3` (versitygw) refuses requests signed for any other region
+with 400, and uploads then say "Uploads aren't available right now".
 
 ### 4. The purge token (worker)
 Cloudflare caches every picture for up to a year, so a taken-down emote must be purged from its
