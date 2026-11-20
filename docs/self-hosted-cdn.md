@@ -77,19 +77,19 @@ step 6 is done and the first uploads exist: the bucket starts empty.
 ### 5. Start it
 ```bash
 cd /srv/cyex-tv/infra
-docker compose -f compose/docker-compose.yaml up -d --build tv-s3 tv-s3-init tv-cdn
-docker compose -f compose/docker-compose.yaml logs tv-s3-init tv-cdn
+docker compose -f compose/docker-compose.yaml --profile cdn up -d --build tv-s3 tv-s3-init tv-cdn
+docker compose -f compose/docker-compose.yaml --profile cdn logs tv-s3-init tv-cdn
 ```
 `tv-s3-init` makes the bucket `cyex-tv-cdn` and exits (`bucket cyex-tv-cdn is ready`). It checks first,
 so running it again does nothing. `tv-cdn` starts after it, and Caddy fetches the certificate on the
 first request or at start (`certificate obtained successfully` in its log). The first build takes a
 few minutes because Caddy is compiled with the rate-limit plugin.
 
-Then restart the services that write: `docker compose -f compose/docker-compose.yaml up -d api worker`.
+Then restart the services that write: `docker compose -f compose/docker-compose.yaml --profile cdn up -d api worker`.
 
 If `tv-s3-init` failed (for example `tv-s3` was still starting), run it again; it only makes what is missing:
 ```bash
-docker compose -f compose/docker-compose.yaml run --rm tv-s3-init
+docker compose -f compose/docker-compose.yaml --profile cdn run --rm tv-s3-init
 ```
 
 ### 6. DNS
@@ -121,7 +121,7 @@ its files answer 404.
 ## Tuning the limits
 
 All in `/srv/cyex-tv/infra/env/cdn.env`. Remove the `#`, set the value, then
-`docker compose -f compose/docker-compose.yaml up -d tv-cdn` (it restarts with the new numbers).
+`docker compose -f compose/docker-compose.yaml --profile cdn up -d tv-cdn` (it restarts with the new numbers).
 To go back to a default, put the `#` back. Don't leave a variable set but empty.
 
 | Variable | Default | What it does |
@@ -195,6 +195,8 @@ URL, expecting 404, so you hear about it when the whole host is down.
   read-only and has no keys.
 - Updating Caddy or the plugin: change the pinned versions in `cdn/Dockerfile` on purpose and run
   `up -d --build tv-cdn`.
-- `docker compose ... up` now needs `s3.env` to exist. It is a required file; `cdn.env` is optional.
+- The CDN services are in the compose profile `cdn`: they start only with `--profile cdn` (or
+  `COMPOSE_PROFILES=cdn` in the shell). Once you serve from this host, always include it, or a plain
+  `up` leaves the CDN as it is. With the profile, `s3.env` must exist; `cdn.env` is optional.
 - If the data folder's file system has no extended attributes, versitygw can't keep its metadata
   there. Use ext4 or xfs (the default on Linux), not a network share.

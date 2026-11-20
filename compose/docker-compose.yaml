@@ -127,8 +127,11 @@ services:
   # The self-hosted CDN (docs/self-hosted-cdn.md). tv-s3 is the S3 gateway the api and worker
   # write to (http://tv-s3:7070 on the cyextv network); tv-cdn serves the same folder, read-only,
   # as https://cdn.cyex.tv. Objects are plain files under ${CDN_DATA_DIR}/<bucket>/.
+  # Profile "cdn": these start only with `--profile cdn`, so a plain `up` on a host that still
+  # serves from R2 needs no s3.env and leaves ports 80/443 alone.
   tv-s3:
     <<: *small
+    profiles: ["cdn"]
     image: versity/versitygw:v1.10.0
     environment:
       VGW_BACKEND: posix
@@ -143,6 +146,7 @@ services:
 
   # Makes the bucket on first start and exits. Safe to run again: it only creates what is missing.
   tv-s3-init:
+    profiles: ["cdn"]
     image: amazon/aws-cli:2.22.35
     restart: "no"
     networks: [cyextv]
@@ -172,6 +176,7 @@ services:
   # Ports 80 and 443 are public on purpose (DNS only, Option A). The data folder is read-only here.
   tv-cdn:
     <<: *small
+    profiles: ["cdn"]
     build:
       context: ../cdn
     image: cyex-tv-cdn:local
