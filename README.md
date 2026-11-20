@@ -4,7 +4,7 @@ Deployment, Cloudflare configuration, backups and runbooks for cyex.tv.
 
 What lives here:
 - the production compose for the api, events, worker, web, `tv-db`, `tv-s3` and `tv-cdn` containers;
-- Cloudflare: the `cyex.tv` zone, DNS, the DNS-only `cdn.cyex.tv` record (self-hosted CDN, `docs/self-hosted-cdn.md`), tunnel hostnames;
+- Cloudflare: the `cyex.tv` zone, DNS, tunnel hostnames (`cdn.cyex.tv` is one: the self-hosted CDN, `docs/self-hosted-cdn.md`);
 - backups: the nightly `tv-db` dump, the CDN data folder, restore steps;
 - runbooks: incidents, takedowns, restores.
 

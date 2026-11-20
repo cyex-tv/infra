@@ -2,6 +2,9 @@
 # else. Every number below can be changed from env/cdn.env (docs/self-hosted-cdn.md); the value
 # after the colon is the default. Comment a variable out to get its default; don't set it empty.
 {
+	# Behind the Cloudflare tunnel: Cloudflare does TLS, cloudflared on the host speaks plain HTTP
+	# to 127.0.0.1:8083 (the only place this listens).
+	auto_https off
 	servers {
 		# Slow clients can't hold connections open.
 		timeouts {
@@ -11,13 +14,16 @@
 			idle {$CDN_IDLE_TIMEOUT:30s}
 		}
 		max_header_size {$CDN_MAX_HEADER_SIZE:16KB}
-		# Option A (DNS only): nobody sits in front of us, so trust nobody. Behind a proxy, list
-		# its address ranges here, or the rate limit sees the proxy instead of the visitor.
-		trusted_proxies static {$CDN_TRUSTED_PROXIES:127.0.0.1/32}
+		# cloudflared reaches us from the host, through Docker's port mapping, so from a private
+		# address. Only from there is the visitor's address taken from CF-Connecting-IP, so each
+		# visitor has their own rate limit. Nothing else reaches this port (it binds to 127.0.0.1).
+		trusted_proxies static {$CDN_TRUSTED_PROXIES:private_ranges}
+		client_ip_headers CF-Connecting-IP
+		trusted_proxies_strict
 	}
 }
 
-{$CDN_HOST:cdn.cyex.tv} {
+http://{$CDN_HOST:cdn.cyex.tv}, :80 {
 	root * /srv/cdn/{$CDN_BUCKET:cyex-tv-cdn}
 
 	log {

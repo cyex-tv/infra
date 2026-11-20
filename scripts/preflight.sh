@@ -94,10 +94,10 @@ owners=$(value api.env CYEX_TV_OWNER_IDS)
 [ -z "$owners" ] || [[ "$owners" =~ ^((twitch|kick):[0-9]+|[0-9A-Z]{26})(,((twitch|kick):[0-9]+|[0-9A-Z]{26}))*$ ]] \
     || bad "api.env: CYEX_TV_OWNER_IDS isn't twitch:<id>,kick:<id>"
 
-# Optional, but say so. The purge only matters while cdn.cyex.tv sits behind Cloudflare's cache.
-[ "$selfhosted" = 1 ] || [ -n "$(value worker.env CYEX_TV_CLOUDFLARE_PURGE_TOKEN)" ] \
+# Optional, but say so: cdn.cyex.tv sits behind Cloudflare's cache, so takedowns must purge it.
+[ -n "$(value worker.env CYEX_TV_CLOUDFLARE_PURGE_TOKEN)" ] \
     || soft "worker.env: CYEX_TV_CLOUDFLARE_PURGE_TOKEN (takedowns won't purge the CDN)"
-[ "$selfhosted" = 1 ] || [ -n "$(value worker.env CYEX_TV_CLOUDFLARE_ZONE_ID)" ] \
+[ -n "$(value worker.env CYEX_TV_CLOUDFLARE_ZONE_ID)" ] \
     || soft "worker.env: CYEX_TV_CLOUDFLARE_ZONE_ID (takedowns won't purge the CDN)"
 [ -r "$DIR/check.env" ] && [ -n "$(value check.env CYEXTV_ALERT_WEBHOOK)" ] \
     || soft "check.env: CYEXTV_ALERT_WEBHOOK (alerts only go to the log)"

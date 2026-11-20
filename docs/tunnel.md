@@ -21,13 +21,16 @@ ingress:
   # The website (the compose's `web` service).
   - hostname: cyex.tv
     service: http://127.0.0.1:8082
+  # Emote, badge and paint pictures (the compose's `tv-cdn` service, profile `cdn`).
+  - hostname: cdn.cyex.tv
+    service: http://127.0.0.1:8083
   # ... cyex.app's existing rules, unchanged ...
   - service: http_status:404
 ```
 
-`cdn.cyex.tv` isn't a tunnel hostname: it is a DNS-only record to the host, served by the `tv-cdn`
-compose service (`docs/self-hosted-cdn.md`; before that it was R2's custom domain, platform
-`docs/setup/owner-steps.md`, Phase 3).
+`cdn.cyex.tv` is served by `tv-cdn` from our own storage (`docs/self-hosted-cdn.md`). Before that it was
+R2's custom domain (platform `docs/setup/owner-steps.md`, Phase 3); disconnect that first, or the name
+is taken.
 
 ## Settings that matter
 
