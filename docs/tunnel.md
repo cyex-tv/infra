@@ -14,19 +14,23 @@ ingress:
   # The event WebSocket (ADR 0005) goes to the events service.
   - hostname: api.cyex.tv
     path: ^/v1/events$
-    service: http://127.0.0.1:8081
+    service: http://cyex-tv-events-1:8081
   # Everything else on the API, including GraphQL and its WebSocket.
   - hostname: api.cyex.tv
-    service: http://127.0.0.1:8080
+    service: http://cyex-tv-api-1:8080
   # The website (the compose's `web` service).
   - hostname: cyex.tv
-    service: http://127.0.0.1:8082
+    service: http://cyex-tv-web-1:3000
   # Emote, badge and paint pictures (the compose's `tv-cdn` service, profile `cdn`).
   - hostname: cdn.cyex.tv
-    service: http://127.0.0.1:8083
+    service: http://cyex-tv-tv-cdn-1:80
   # ... cyex.app's existing rules, unchanged ...
   - service: http_status:404
 ```
+
+`cloudflared` runs as a container on the `cyextv` network, so the routes name the containers
+(`<project>-<service>-1`) and their ports inside Docker. A `cloudflared` installed on the host would
+use the `127.0.0.1` ports from the compose instead (8080, 8081, 8082 and 8083 for the CDN).
 
 `cdn.cyex.tv` is served by `tv-cdn` from our own storage (`docs/self-hosted-cdn.md`). Before that it was
 R2's custom domain (platform `docs/setup/owner-steps.md`, Phase 3); disconnect that first, or the name

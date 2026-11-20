@@ -5,8 +5,8 @@ object as a plain file) and served at `https://cdn.cyex.tv` by `tv-cdn` (Caddy).
 only talk S3, so the platform needs no code change: the storage is set by env.
 
 `cdn.cyex.tv` goes through the existing Cloudflare tunnel, like `cyex.tv` and `api.cyex.tv`:
-- No ports are open on the host and its IP stays hidden. `tv-cdn` listens on `127.0.0.1:8083` only,
-  and only the host's `cloudflared` reaches it.
+- No ports are open on the host and its IP stays hidden. `cloudflared` (a container on the `cyextv`
+  network) reaches `tv-cdn` as `http://cyex-tv-tv-cdn-1:80`; on the host it is only on `127.0.0.1:8083`.
 - Cloudflare does TLS, caches the files at its edge (so most requests never reach the host) and
   absorbs floods.
 - Caddy still limits each visitor by their real address (Cloudflare's `CF-Connecting-IP`), and serves
@@ -16,7 +16,7 @@ only talk S3, so the platform needs no code change: the storage is set by env.
 | | |
 |---|---|
 | Storage | `tv-s3`, S3 on `http://tv-s3:7070` inside the `cyextv` network, and on `127.0.0.1:7070` on the host |
-| Serving | `tv-cdn` on `127.0.0.1:8083`, reached through the tunnel hostname `cdn.cyex.tv` |
+| Serving | `tv-cdn` (`cyex-tv-tv-cdn-1:80` on the `cyextv` network, `127.0.0.1:8083` on the host), reached through the tunnel hostname `cdn.cyex.tv` |
 | Files | `/srv/cyex-tv/cdn/data/cyex-tv-cdn/...` (`CDN_DATA_DIR`) |
 | Served | `GET` and `HEAD` on `/emotes/*` and `/cosmetics/*` only. Everything else is 404, `/originals/` always |
 | Config | `cdn/Caddyfile`, every number from `env/cdn.env` |
@@ -88,7 +88,8 @@ In Cloudflare, in this order:
 1. **R2**, `cyex-tv-cdn`, Settings, Custom Domains: disconnect `cdn.cyex.tv`. If you made an `A` or
    `AAAA` record for `cdn` by hand, delete it in DNS, Records.
 2. **Zero Trust**, Networks, Tunnels, the cyex tunnel, **Public Hostnames**, Add a public hostname:
-   subdomain `cdn`, domain `cyex.tv`, service type **HTTP**, URL **`127.0.0.1:8083`**. Save.
+   subdomain `cdn`, domain `cyex.tv`, Service URL **`http://cyex-tv-tv-cdn-1:80`** (the container, like the other
+   cyex.tv routes; with a `cloudflared` installed on the host it would be `http://127.0.0.1:8083`). Save.
    Cloudflare makes the DNS record itself (a proxied `CNAME` to the tunnel). If the tunnel is set up
    by a config file instead, add the `cdn.cyex.tv` rule from `docs/tunnel.md` and restart cloudflared.
 3. **Caching**, Cache Rules: keep (or add) the rule for `cdn.cyex.tv`: when hostname equals
