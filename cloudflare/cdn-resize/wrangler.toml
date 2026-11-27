@@ -1,0 +1,13 @@
+# The cdn.cyex.tv resize Worker (platform ADR 0037). The owner deploys it; see
+# docs/setup/owner-steps.md in cyex-tv/platform ("on-the-fly resizing"). No account ID or token
+# lives here: `wrangler deploy` asks for the login, or set CLOUDFLARE_ACCOUNT_ID in the shell.
+name = "cyex-tv-cdn-resize"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = false
+
+# Only cdn.cyex.tv; the zone is cyex.tv. Nothing on cyex.app.
+routes = [{ pattern = "cdn.cyex.tv/*", zone_name = "cyex.tv" }]
+
+[vars]
+CDN_HOST = "cdn.cyex.tv"

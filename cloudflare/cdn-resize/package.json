@@ -1,0 +1,10 @@
+{
+  "name": "cyex-tv-cdn-resize",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "description": "cdn.cyex.tv Worker: on-the-fly resizing of emote, badge and paint pictures (platform ADR 0037).",
+  "scripts": {
+    "test": "node --test test/plan.test.js test/worker.test.js"
+  }
+}
