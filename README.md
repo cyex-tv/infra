@@ -24,5 +24,6 @@ Status: Phase 9 in progress. See the plan in [cyex-tv/platform](https://github.c
 | `backups/` | the nightly dump with an off-host copy, and the restore test |
 | `docs/monitoring.md`, `docs/incidents.md` | health, logs, alerts to build, the incident process |
 | `docs/launch.md` | the launch checklist |
+| `cloudflare/cdn-resize/` | the `cdn.cyex.tv` Worker that resizes pictures on request (`?w=`, `?format=`; platform ADR 0037), deployed by the owner |
 
 Licence: [AGPL-3.0](LICENSE).
