@@ -52,6 +52,10 @@ services:
     build:
       context: ${PLATFORM_DIR:-../../platform}
       target: api
+      # scripts/deploy.sh caps the compiler's cores and passes the commit (shown by GET /v1/meta).
+      args: &rust-build
+        BUILD_JOBS: ${CYEXTV_BUILD_JOBS:-}
+        CYEX_TV_BUILD_SHA: ${CYEX_TV_BUILD_SHA:-}
     image: cyex-tv-api:local
     env_file: ["${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/api.env"]
     environment:
@@ -71,6 +75,7 @@ services:
     build:
       context: ${PLATFORM_DIR:-../../platform}
       target: events
+      args: *rust-build
     image: cyex-tv-events:local
     env_file: ["${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/events.env"]
     environment:
@@ -91,6 +96,7 @@ services:
     build:
       context: ${PLATFORM_DIR:-../../platform}
       target: worker
+      args: *rust-build
     image: cyex-tv-worker:local
     env_file: ["${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/worker.env"]
     environment:
@@ -122,7 +128,9 @@ services:
     ports: ["127.0.0.1:8082:3000"]
     deploy:
       resources:
-        limits: { memory: 256m, cpus: "0.5" }
+        # A whole core: right after a deploy every page and script file is new to Cloudflare's
+        # cache, and half a core made the first visitors wait.
+        limits: { memory: 384m, cpus: "1.0" }
 
   # The self-hosted CDN (docs/self-hosted-cdn.md). tv-s3 is the S3 gateway the api and worker
   # write to (http://tv-s3:7070 on the cyextv network); tv-cdn serves the same folder, read-only,
