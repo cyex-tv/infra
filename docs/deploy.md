@@ -61,15 +61,22 @@ First time, on the host (as a user in the `docker` group):
 ## Updating
 
 ```bash
-cd /srv/cyex-tv/platform && git pull
-cd /srv/cyex-tv/infra && git pull
-docker compose -f compose/docker-compose.yaml up -d --build
+/srv/cyex-tv/infra/scripts/deploy.sh
 ```
+It pulls both repos, builds the new images while the old containers keep serving, then swaps only
+the containers that changed and checks that api, events and web answer. The Rust compiler gets 2
+cores (`CYEXTV_BUILD_JOBS=4 scripts/deploy.sh` for more) and keeps its compiled dependencies
+between builds, so a normal deploy compiles only what changed: the site stays responsive during
+the build, and the swap itself is a few seconds per service. A failed build changes nothing.
+
+Avoid `docker compose up -d --build` for updates: it builds with every core while the site runs
+on the same machine.
 
 Migrations are forward-only and additive within v1, so the api can start on the new schema
 while the old events and worker are still running for a moment.
 
 ## Rolling back
 
-Check out the previous platform commit and run `up -d --build` again. A migration is never
-rolled back by hand; if one is wrong, a new forward migration fixes it.
+Check out the previous platform commit (`git -C /srv/cyex-tv/platform checkout <commit>`) and run
+`scripts/deploy.sh --no-pull`. A migration is never rolled back by hand; if one is wrong, a new
+forward migration fixes it.
