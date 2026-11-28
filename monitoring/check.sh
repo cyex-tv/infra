@@ -168,3 +168,76 @@ elif [ -n "$CF_ACCOUNT" ] && [ -n "$CF_TOKEN" ] && r2_due; then
         echo "$(now) R2 usage: Cloudflare's analytics API refused or failed" >&2
     fi
 fi
+
+# 6. Every published picture is on the CDN, checked the way a visitor's browser asks for it: once
+# an hour, the emotes (search) and the cosmetics the API publishes, one HEAD on https://cdn.cyex.tv
+# per file. A picture the API lists that the CDN doesn't have is a broken image on the site. Then one
+# request past the edge cache (a fresh query string) times the way back to tv-cdn through the
+# tunnel, which every first view of a file pays. Needs jq. Paced under tv-cdn's per-visitor limit.
+CDN_PROBE_MAX="${CYEXTV_CDN_PROBE_MAX:-2000}"
+CDN_MISS_MAX="${CYEXTV_CDN_MISS_MAX:-3}"
+API_URL="${CYEXTV_API_URL:-http://127.0.0.1:8080}"
+cdn_due() {
+    local stamp="$STATE/cdn-files-last"
+    [ -f "$stamp" ] && [ "$(( $(date +%s) - $(cat "$stamp") ))" -lt 3600 ] && return 1
+    date +%s > "$stamp"
+}
+if ! command -v jq > /dev/null; then
+    echo "$(now) CDN files: install jq (apt install jq) for this check" >&2
+elif cdn_due; then
+    list="$STATE/cdn-files.txt"
+    : > "$list"
+    page=1
+    listed=ok
+    while :; do
+        body=$(jq -nc --argjson p "$page" '{query: "query($p: Int!) { searchEmotes(query: \"\", page: $p, perPage: 100) { total items { name host files { name } } } }", variables: {p: $p}}')
+        answer=$(curl -fsS -m 20 -H 'Content-Type: application/json' -d "$body" "$API_URL/v1/gql") || { listed=fail; break; }
+        printf '%s' "$answer" | jq -r '.data.searchEmotes.items[] | . as $e | "\($e.host)/\($e.files[0].name) emote \($e.name)"' >> "$list"
+        got=$(printf '%s' "$answer" | jq '.data.searchEmotes.items | length')
+        total=$(printf '%s' "$answer" | jq '.data.searchEmotes.total')
+        [ "$got" -lt 100 ] || [ "$(( page * 100 ))" -ge "$total" ] || [ "$(( page * 100 ))" -ge "$CDN_PROBE_MAX" ] && break
+        page=$(( page + 1 ))
+    done
+    if cosmetics=$(curl -fsS -m 20 "$API_URL/v1/cosmetics"); then
+        printf '%s' "$cosmetics" | jq -r '(.badges[] | "\(.image.files[0].url) badge \(.name)"), (.paints[] | select(.image != null) | "\(.image.files[0].url) paint \(.name)")' >> "$list"
+    else
+        listed=fail
+    fi
+    if [ "$listed" = fail ]; then
+        report cdn-files fail "the API didn't list its emotes or cosmetics ($API_URL)"
+    else
+        missing=""
+        count=0
+        checked=0
+        sample=""
+        while read -r url kind name; do
+            case "$url" in https://*) ;; *) continue ;; esac
+            [ "$checked" -ge "$CDN_PROBE_MAX" ] && break
+            checked=$(( checked + 1 ))
+            code=$(curl -s -o /dev/null -I -m 15 -w '%{http_code}' "$url")
+            if [ "$code" = 200 ]; then
+                [ -z "$sample" ] && sample=$url
+            else
+                count=$(( count + 1 ))
+                [ "$count" -le 5 ] && missing="$missing $kind \"$name\" ($code);"
+            fi
+            sleep 0.15
+        done < "$list"
+        echo "$(now) CDN files: $checked checked, $count missing"
+        if [ "$count" -gt 0 ]; then
+            report cdn-files fail "$count of $checked published pictures aren't on the CDN:$missing"
+        else
+            report cdn-files ok ""
+        fi
+        # The way back to the origin, past the edge cache.
+        if [ -n "$sample" ]; then
+            ttfb=$(curl -s -o /dev/null -m 30 -w '%{time_starttransfer}' "$sample?probe=$(date +%s)")
+            echo "$(now) CDN origin: first byte after ${ttfb}s on a cache miss"
+            if awk -v t="$ttfb" -v max="$CDN_MISS_MAX" 'BEGIN { exit !(t == 0 || t > max) }'; then
+                report cdn-origin fail "a file the edge doesn't hold yet took ${ttfb}s to start (more than ${CDN_MISS_MAX}s): tv-cdn or the tunnel is slow"
+            else
+                report cdn-origin ok ""
+            fi
+        fi
+    fi
+fi

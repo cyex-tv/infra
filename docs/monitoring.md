@@ -41,6 +41,8 @@ A check alerts after failing twice in a row (about 10 minutes), and again when i
 | `events` | `/health` on events doesn't answer |
 | `web` | the website doesn't answer on `/developers` |
 | `cdn` | `https://cdn.cyex.tv/emotes/health-probe` answers anything but 404 or 200 (Caddy or the host is down; a 429 from your own address counts as a fail, so the check runs from the host itself) |
+| `cdn-files` | (hourly, needs `jq`) a published emote, badge or paint whose picture the CDN doesn't have: the API's emote search and `/v1/cosmetics` are listed and each first file is asked for on `https://cdn.cyex.tv`, as a visitor's browser does. Names the first five |
+| `cdn-origin` | (hourly) a file the edge cache doesn't hold yet takes more than 3 s to start (`CYEXTV_CDN_MISS_MAX`): the way through the tunnel to tv-cdn is slow, and every first view of a picture waits that long |
 | `worker` | the worker isn't running, or its metrics don't answer |
 | `worker-db` | the worker can't reach `tv-db` |
 | `queue` | more than 100 jobs are due (the worker is stuck or too slow) |
