@@ -31,7 +31,7 @@ die() { echo "deploy: $1" >&2; exit 1; }
 args=(-f "$INFRA/compose/docker-compose.yaml")
 [ -f "$ENV_DIR/compose.env" ] && args+=(--env-file "$ENV_DIR/compose.env")
 [ -f "$ENV_DIR/s3.env" ] && args+=(--profile cdn)
-compose() { PLATFORM_DIR="$PLATFORM" CYEXTV_ENV_DIR="$ENV_DIR" CARGO_BUILD_JOBS="$JOBS" docker compose "${args[@]}" "$@"; }
+compose() { PLATFORM_DIR="$PLATFORM" CYEXTV_ENV_DIR="$ENV_DIR" CYEXTV_BUILD_JOBS="$JOBS" docker compose "${args[@]}" "$@"; }
 
 docker compose version > /dev/null 2>&1 || die "the Docker compose plugin is missing"
 [ -d "$PLATFORM/.git" ] || die "no platform checkout at $PLATFORM (run scripts/install.sh first)"

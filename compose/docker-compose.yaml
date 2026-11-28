@@ -54,7 +54,7 @@ services:
       target: api
       # scripts/deploy.sh caps the compiler's cores and passes the commit (shown by GET /v1/meta).
       args: &rust-build
-        CARGO_BUILD_JOBS: ${CARGO_BUILD_JOBS:-}
+        BUILD_JOBS: ${CYEXTV_BUILD_JOBS:-}
         CYEX_TV_BUILD_SHA: ${CYEX_TV_BUILD_SHA:-}
     image: cyex-tv-api:local
     env_file: ["${CYEXTV_ENV_DIR:-/srv/cyex-tv/infra/env}/api.env"]
